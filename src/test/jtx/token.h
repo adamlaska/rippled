@@ -24,7 +24,7 @@
 #include <test/jtx/Env.h>
 #include <test/jtx/owners.h>
 
-#include <ripple/basics/strHex.h>
+#include <xrpl/basics/strHex.h>
 
 #include <initializer_list>
 
@@ -83,6 +83,21 @@ public:
     operator()(Env&, JTx& jtx) const;
 };
 
+/** Sets the optional amount field on an NFTokenMint. */
+class amount
+{
+private:
+    STAmount const amount_;
+
+public:
+    explicit amount(STAmount const amount) : amount_(amount)
+    {
+    }
+
+    void
+    operator()(Env&, JTx& jtx) const;
+};
+
 /** Get the next NFTokenID that will be issued. */
 uint256
 getNextID(
@@ -95,6 +110,7 @@ getNextID(
 /** Get the NFTokenID for a particular nftSequence. */
 uint256
 getID(
+    jtx::Env const& env,
     jtx::Account const& account,
     std::uint32_t tokenTaxon,
     std::uint32_t nftSeq,
@@ -220,6 +236,10 @@ setMinter(jtx::Account const& account, jtx::Account const& minter);
 /** Clear any authorized minter from an account root. */
 Json::Value
 clearMinter(jtx::Account const& account);
+
+/** Modify an NFToken. */
+Json::Value
+modify(jtx::Account const& account, uint256 const& nftokenID);
 
 }  // namespace token
 

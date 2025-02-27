@@ -15,10 +15,10 @@
 */
 //==============================================================================
 
-#include <ripple/core/ConfigSections.h>
-#include <ripple/protocol/Feature.h>
-#include <ripple/protocol/jss.h>
 #include <test/jtx.h>
+#include <xrpld/core/ConfigSections.h>
+#include <xrpl/protocol/Feature.h>
+#include <xrpl/protocol/jss.h>
 
 namespace ripple {
 namespace test {
@@ -247,7 +247,11 @@ public:
 
         // Duplicate signers should fail.
         aliceSeq = env.seq(alice);
-        env(noop(alice), msig(demon, demon), fee(3 * baseFee), ter(temINVALID));
+        env(noop(alice),
+            msig(demon, demon),
+            fee(3 * baseFee),
+            rpc("invalidTransaction",
+                "fails local checks: Duplicate Signers not allowed."));
         env.close();
         BEAST_EXPECT(env.seq(alice) == aliceSeq);
 
@@ -358,7 +362,10 @@ public:
         msig phantoms{bogie, demon};
         std::reverse(phantoms.signers.begin(), phantoms.signers.end());
         std::uint32_t const aliceSeq = env.seq(alice);
-        env(noop(alice), phantoms, ter(temINVALID));
+        env(noop(alice),
+            phantoms,
+            rpc("invalidTransaction",
+                "fails local checks: Unsorted Signers array."));
         env.close();
         BEAST_EXPECT(env.seq(alice) == aliceSeq);
     }
@@ -1634,7 +1641,11 @@ public:
 
         // Duplicate signers should fail.
         aliceSeq = env.seq(alice);
-        env(noop(alice), msig(demon, demon), fee(3 * baseFee), ter(temINVALID));
+        env(noop(alice),
+            msig(demon, demon),
+            fee(3 * baseFee),
+            rpc("invalidTransaction",
+                "fails local checks: Duplicate Signers not allowed."));
         env.close();
         BEAST_EXPECT(env.seq(alice) == aliceSeq);
 
@@ -1659,6 +1670,29 @@ public:
         env(noop(alice), msig(bogie, demon), fee(3 * baseFee));
         env.close();
         BEAST_EXPECT(env.seq(alice) == aliceSeq + 1);
+    }
+
+    void
+    test_signerListSetFlags(FeatureBitset features)
+    {
+        using namespace test::jtx;
+
+        Env env{*this, features};
+        Account const alice{"alice"};
+
+        env.fund(XRP(1000), alice);
+        env.close();
+
+        bool const enabled = features[fixInvalidTxFlags];
+        testcase(
+            std::string("SignerListSet flag, fix ") +
+            (enabled ? "enabled" : "disabled"));
+
+        ter const expected(enabled ? TER(temINVALID_FLAG) : TER(tesSUCCESS));
+        env(signers(alice, 2, {{bogie, 1}, {ghost, 1}}),
+            expected,
+            txflags(tfPassive));
+        env.close();
     }
 
     void
@@ -1697,6 +1731,10 @@ public:
         testAll(all - featureMultiSignReserve - featureExpandedSignerList);
         testAll(all - featureExpandedSignerList);
         testAll(all);
+
+        test_signerListSetFlags(all - fixInvalidTxFlags);
+        test_signerListSetFlags(all);
+
         test_amendmentTransition();
     }
 };
